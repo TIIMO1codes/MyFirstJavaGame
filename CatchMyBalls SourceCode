@@ -1,0 +1,198 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+ class CatchMyBalls extends JPanel implements ActionListener {
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int BALL_SIZE = 20;
+    private static final int BASKET_WIDTH = 100;
+    private static final int BASKET_HEIGHT = 20;
+    private static final int INITIAL_DELAY = 80;
+    private static final int MAX_SPEED = 10;
+    private static final int BASKET_SPEED = 50;
+
+    private List<Ball> balls;
+    private Rectangle basket;
+    private Timer timer;
+    private Random random;
+    private int score;
+    private boolean gameover;
+    private boolean moveLeft;
+    private boolean moveRight;
+
+    private class Ball {
+        private int x;
+        private int y;
+        private int speed;
+        private boolean isRed;
+
+        public Ball() {
+            randomizePosition();
+            randomizeSpeed();
+            isRed = random.nextBoolean();
+        }
+
+        public void move() {
+            y += speed;
+
+            if (y >= HEIGHT) {
+                randomizePosition();
+                randomizeSpeed();
+                isRed = random.nextBoolean();
+            }
+        }
+
+        private void randomizePosition() {
+            x = random.nextInt(WIDTH - BALL_SIZE);
+            y = 0;
+        }
+
+        private void randomizeSpeed() {
+            speed = random.nextInt(MAX_SPEED) + 1;
+        }
+
+        public boolean catchBall(int basketX, int basketY) {
+            if (x >= basketX && x <= basketX + BASKET_WIDTH && y >= basketY && y <= basketY + BASKET_HEIGHT) {
+                if (isRed) {
+                    gameover = true;
+                    return false;
+                } else {
+                    score++;
+                    randomizePosition();
+                    randomizeSpeed();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public boolean isRed() {
+            return isRed;
+        }
+    }
+
+    public CatchMyBalls() {
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(Color.WHITE);
+        setFocusable(true);
+
+        balls = new ArrayList<>();
+        random = new Random();
+        score = 0;
+        gameover = false;
+        moveLeft = false;
+        moveRight = false;
+
+        basket = new Rectangle(WIDTH / 2 - BASKET_WIDTH / 2, HEIGHT - BASKET_HEIGHT - 10, BASKET_WIDTH, BASKET_HEIGHT);
+
+        timer = new Timer(INITIAL_DELAY, this);
+        timer.start();
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+                if (keyCode == KeyEvent.VK_LEFT) {
+                    moveLeft = true;
+                } else if (keyCode == KeyEvent.VK_RIGHT) {
+                    moveRight = true;
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyCode = e.getKeyCode();
+                if (keyCode == KeyEvent.VK_LEFT) {
+                    moveLeft = false;
+                } else if (keyCode == KeyEvent.VK_RIGHT) {
+                    moveRight = false;
+                }
+            }
+        });
+
+        requestFocus();
+    }
+
+     @Override
+     public void actionPerformed(ActionEvent e) {
+         if (!gameover && balls.size() < 10) {
+             int ballsToAdd = Math.min(10 - balls.size(), 10);
+             for (int i = 0; i < ballsToAdd; i++) {
+                 balls.add(new Ball());
+             }
+         }
+
+         List<Ball> ballsToRemove = new ArrayList<>();
+
+         for (Ball ball : balls) {
+             ball.move();
+
+             if (ball.catchBall(basket.x, basket.y)) {
+                 ballsToRemove.add(ball);
+             }
+
+             if (ball.y >= HEIGHT) {
+                 ballsToRemove.add(ball);
+             }
+         }
+
+         balls.removeAll(ballsToRemove);
+
+         if (moveLeft && basket.x > 0) {
+             basket.x -= BASKET_SPEED;
+         } else if (moveRight && basket.x + basket.width < WIDTH) {
+             basket.x += BASKET_SPEED;
+         }
+
+         repaint();
+
+         if (gameover) {
+             timer.stop();
+         }
+     }
+
+
+
+     @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        for (Ball ball : balls) {
+            if (ball.isRed()) {
+                g2d.setColor(Color.RED);
+            } else {
+                g2d.setColor(Color.GREEN);
+            }
+            g2d.fillOval(ball.x, ball.y, BALL_SIZE, BALL_SIZE);
+        }
+
+        g2d.setColor(Color.BLACK);
+        g2d.setFont(new Font("Arial", Font.BOLD, 20));
+        g2d.drawString("Score: " + score, 20, 30);
+
+        if (gameover) {
+            g2d.setFont(new Font("Arial", Font.BOLD, 40));
+            g2d.drawString("GG's", WIDTH / 2 - 50, HEIGHT / 2);
+        }
+
+        g2d.setColor(Color.BLUE);
+        g2d.fillRect(basket.x, basket.y, basket.width, basket.height);
+    }
+
+    public static void main(String[] args) {
+        JFrame frame = new JFrame("Catch My Balls");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
+        frame.add(new CatchMyBalls());
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+}
